@@ -4,6 +4,6 @@
 # the result of the run that is initialized by the tool should be placed in file other than the original result
 REPORT_PATH="test/out/reportNew.xml"  
 
-PYTHONPATH="code" python3 -m pytest "$@" --junit-xml="$REPORT_PATH"
+PYTHONPATH="code" python3 -m pytest "$@" --junit-xml="$REPORT_PATH" >&2
 
 cat "$REPORT_PATH"
