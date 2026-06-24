@@ -1,30 +1,36 @@
 #!/usr/bin/env bash
 
-BASE_DIR="$(pwd)"
 HOOK_FILE="$(readlink -f "$0")"
 SCRIPT_DIR="$(cd "$(dirname "$HOOK_FILE")" && pwd)"
-WORK_DIR="$SCRIPT_DIR/../../code"  # dir which contains the binary and cofig.json
+
+WORK_DIR="$SCRIPT_DIR/../../code"
 BINARY="$WORK_DIR/testAuditor"
+
+INPUT_NOTES_REF="commits"
 OUTPUT_NOTES_REF="testAuditor"
 
-while read -r oldrev newrev refname
-do
-    if [[ "$refname" == refs/notes/* ]]; then
-        continue
-    fi
+while read -r oldrev newrev refname; do
+    [[ "$refname" == refs/notes/* ]] && continue
 
-    note="$(git notes show "$newrev" 2>/dev/null || true)"
+    note="$(git notes --ref="$INPUT_NOTES_REF" show "$newrev" 2>/dev/null || true)"
     if [[ -z "$note" ]]; then
         echo "Error: No git note found for $newrev"
         continue
     fi
-    cd "$WORK_DIR"
+
     if [[ ! -x "$BINARY" ]]; then
-        echo "binary not found or binary not executable under given path: $BINARY"
+        echo "binary not found or not executable: $BINARY"
         exit 1
     fi
-    output="$("$BINARY" -c "$note")"
-    cd "$BASE_DIR"
-    git notes --ref="$OUTPUT_NOTES_REF" add -m "$output" "$newrev"
+
+    output="$(cd "$WORK_DIR" && "$BINARY" -c "$note")"
+
+    if [[ -z "$output" ]]; then
+        echo "testAuditor produced no output for $newrev"
+        continue
+    fi
+
+    git notes --ref="$OUTPUT_NOTES_REF" add -f -m "$output" "$newrev"
+
     echo "testAuditor wrote note to refs/notes/$OUTPUT_NOTES_REF for $newrev"
 done
